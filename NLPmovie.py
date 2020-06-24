@@ -1,14 +1,10 @@
 import os
-from urllib.request import urlopen
 import nltk
 from nltk import tokenize
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from nltk.corpus import stopwords
-import re
 
 nltk.download('punkt')
 nltk.download('vader_lexicon')
-import openpyxl
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
 import csv
@@ -21,8 +17,10 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 
 # This script use its own directory as dataset path, Insert your Dataset with same path of the script
 DATASETPATH = os.path.dirname(os.path.abspath(__file__))
-DATASET = DATASETPATH + '/IMDB Dataset2.csv'
+DATASET = DATASETPATH + '/IMDB Dataset.csv'
 
+
+print("Open the data")
 # Calling Dataset
 review = []
 sentiment = []
@@ -34,6 +32,7 @@ for line in rdr:
     sentiment.append(line[1])
 f.close()
 
+
 # Remove first row
 del review[0]
 del sentiment[0]
@@ -41,6 +40,8 @@ del sentiment[0]
 for line in review:
     sum_review = sum_review + line
 
+
+print("Tokenize & Sentiment Analysis")
 # Tokenize & Sentiment Analysis
 
 sid = SentimentIntensityAnalyzer()
@@ -62,7 +63,7 @@ for content in review:
 
 accuracy = 0
 for i in range(len(score_list)):
-    if (float)(score_list[i]) > 0.18115:
+    if (float)(score_list[i]) > 0.05:
         if sentiment[i] == 'positive':
             accuracy += 1
     else:
@@ -110,9 +111,9 @@ pos = 0
 neg = 0
 neu = 0
 for i in range(len(y_range)):
-    if y_range[i] >= 0.15:
+    if y_range[i] >= 0.05:
         pos = pos + 1
-    elif y_range[i] <= -0.15:
+    elif y_range[i] <= -0.05:
         neg = neg + 1
     else:
         neu = neu + 1
@@ -124,20 +125,24 @@ print("Neutral Review : ", neu)
 wrong = 0
 neuAndRight = 0
 neuAndWrong = 0
+
+# Threshold of classifying the text.
+THRESHOLD = 0.05
+
 # POS / NEU / NEG Classification : Can Change Value of If y_range[i] >= NUMBER :
 # neuAndRight stands for which review was analyzed by NTLK but it was Positive-Positive in Test - Prediction Model
 # neuAndWrong vice versa
 # Thats because we're using only Pos/Neg but our NTLK analysis using Pos/Neu/Neg
 # Just note it
 for i in range(len(y_range)):
-    if y_range[i] >= 0.25:
+    if y_range[i] >= THRESHOLD:
         if sentiment[i] == 'negative':
             wrong = wrong + 1
-    elif y_range[i] <= -0.25:
+    elif y_range[i] <= -THRESHOLD:
         if sentiment[i] == 'positive':
             wrong = wrong + 1
     else:
-        if y_range[i] > 0.18115:
+        if y_range[i] > THRESHOLD:
             if sentiment[i] == 'positive':
                 neuAndRight = neuAndRight + 1
             else:
@@ -148,10 +153,10 @@ for i in range(len(y_range)):
             else:
                 neuAndWrong = neuAndWrong + 1
 
-print("totaly wrong : ", wrong)
+# print("totaly wrong : ", wrong)
 print("Neutral by NTLK but Right : ", neuAndRight)
 print("Neutral by NTLK but Wrong : ", neuAndWrong)
-
+print('total dataset :', len(y_range))
 print("total wrongs : ", wrong + neuAndWrong)
 print("Accuracy : ", (len(y_range) - (wrong + neuAndWrong)) / len(y_range) * 100)
 
@@ -166,18 +171,24 @@ predict_sentiment = []
 # positive = 1, negative = 0
 
 for i in range(len(score_list)):
-    if (float)(score_list[i]) > 0.18115:
+    # Pass the neutral Reviews
+    if abs(float(score_list[i])) <= THRESHOLD:
+        continue
+
+    if (float)(score_list[i]) > THRESHOLD:
         predict_sentiment.append(1)
     else:
         predict_sentiment.append(0)
+
     if sentiment[i] == 'positive':
         movie_sentiment.append(1)
     else:
         movie_sentiment.append(0)
-
+print('Total reviews except neutral review')
+print(len(movie_sentiment))
 print("::Confusion Matrix")
 print(confusion_matrix(movie_sentiment, predict_sentiment))
 print("::Classification Report (positive = 1, negative = 0")
 print(classification_report(movie_sentiment, predict_sentiment))
-print("::Accuracy Score")
+print("::Accuracy Score except neutral reviews")
 print(accuracy_score(movie_sentiment, predict_sentiment))
